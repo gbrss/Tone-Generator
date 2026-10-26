@@ -17,7 +17,7 @@
         autocomplete="off"
         spellcheck="false"
         aria-label="Frecuencia en hercios"
-        value="440"
+        value="432"
       />
       <span class="unit">Hz</span>
     </div>
@@ -64,8 +64,8 @@
 
   <div class="volume-row">
     <label for="volume">Volumen</label>
-    <input id="volume" type="range" min="0" max="100" step="1" value="40" aria-label="Volumen" />
-    <output id="volume-out">40%</output>
+    <input id="volume" type="range" min="0" max="100" step="1" value="27" aria-label="Volumen" />
+    <output id="volume-out">27%</output>
   </div>
 
   <p class="hint">Atajos: <kbd>Espacio</kbd> reproducir/detener · <kbd>←</kbd><kbd>→</kbd> ajuste · <kbd>Shift</kbd> ±1 Hz · <kbd>Ctrl</kbd> ±0,01 Hz · <kbd>Ctrl</kbd>+<kbd>Shift</kbd> ±0,001 Hz</p>
@@ -328,6 +328,6 @@
     const v = Number(localStorage.getItem('tone-volume'));
     if (Number.isFinite(v) && localStorage.getItem('tone-volume') !== null) setVolume(Math.min(100, Math.max(0, v)));
   } catch { /* sin storage */ }
-  setFrequency(440);
+  setFrequency(432);
   applyHash();
 </script>
