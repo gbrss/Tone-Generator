@@ -1,0 +1,333 @@
+---
+// Componente principal del generador de tonos (Web Audio API).
+---
+
+<section class="gen" aria-label="Generador de tonos">
+  <div class="top">
+    <button id="play" class="btn play" type="button" aria-pressed="false">
+      <span class="icon" aria-hidden="true">▶</span>
+      <span class="label">Reproducir</span>
+    </button>
+
+    <div class="readout">
+      <input
+        id="freq-input"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        spellcheck="false"
+        aria-label="Frecuencia en hercios"
+        value="440"
+      />
+      <span class="unit">Hz</span>
+    </div>
+  </div>
+
+  <div class="slider-row">
+    <button id="dec" class="btn small" type="button" aria-label="Bajar 1 Hz" title="Bajar 1 Hz (Shift + ←)">−</button>
+    <input
+      id="freq-slider"
+      type="range"
+      min="0"
+      max="1000"
+      step="1"
+      value="0"
+      aria-label="Frecuencia (escala logarítmica)"
+    />
+    <button id="inc" class="btn small" type="button" aria-label="Subir 1 Hz" title="Subir 1 Hz (Shift + →)">+</button>
+  </div>
+
+  <div class="row">
+    <button id="half" class="btn" type="button" title="Bajar una octava">×½</button>
+    <button id="double" class="btn" type="button" title="Subir una octava">×2</button>
+    <button id="copy" class="btn" type="button" title="Copiar enlace con esta frecuencia">Copiar enlace</button>
+  </div>
+
+  <div class="row waves" role="group" aria-label="Tipo de onda">
+    <button class="btn wave" type="button" data-wave="sine" aria-pressed="true" title="Sinusoidal (tono puro)">
+      <svg viewBox="0 0 48 24" width="48" height="24" aria-hidden="true"><path d="M2 12 C 8 -2, 16 -2, 24 12 S 40 26, 46 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      <span>Sinusoidal</span>
+    </button>
+    <button class="btn wave" type="button" data-wave="square" aria-pressed="false" title="Cuadrada">
+      <svg viewBox="0 0 48 24" width="48" height="24" aria-hidden="true"><path d="M2 18 V6 H14 V18 H26 V6 H38 V18 H46" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></svg>
+      <span>Cuadrada</span>
+    </button>
+    <button class="btn wave" type="button" data-wave="sawtooth" aria-pressed="false" title="Diente de sierra">
+      <svg viewBox="0 0 48 24" width="48" height="24" aria-hidden="true"><path d="M2 18 L16 6 V18 L30 6 V18 L44 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></svg>
+      <span>Diente de sierra</span>
+    </button>
+    <button class="btn wave" type="button" data-wave="triangle" aria-pressed="false" title="Triangular">
+      <svg viewBox="0 0 48 24" width="48" height="24" aria-hidden="true"><path d="M2 18 L14 6 L26 18 L38 6 L46 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></svg>
+      <span>Triangular</span>
+    </button>
+  </div>
+
+  <div class="volume-row">
+    <label for="volume">Volumen</label>
+    <input id="volume" type="range" min="0" max="100" step="1" value="40" aria-label="Volumen" />
+    <output id="volume-out">40%</output>
+  </div>
+
+  <p class="hint">Atajos: <kbd>Espacio</kbd> reproducir/detener · <kbd>←</kbd><kbd>→</kbd> ajuste · <kbd>Shift</kbd> ±1 Hz · <kbd>Ctrl</kbd> ±0,01 Hz · <kbd>Ctrl</kbd>+<kbd>Shift</kbd> ±0,001 Hz</p>
+  <p id="status" class="sr-only" aria-live="polite"></p>
+</section>
+
+<style>
+  .gen {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    display: grid;
+    gap: 16px;
+  }
+  .top { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .readout {
+    display: flex; align-items: baseline; gap: 8px;
+    flex: 1; min-width: 180px; justify-content: flex-end;
+  }
+  #freq-input {
+    width: 100%; max-width: 240px;
+    font-size: 2.2rem; font-weight: 600; text-align: right;
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 4px 12px; font-variant-numeric: tabular-nums;
+  }
+  #freq-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .unit { font-size: 1.3rem; color: var(--muted); }
+
+  .btn {
+    appearance: none; cursor: pointer;
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 16px; font: inherit; font-weight: 500;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    transition: background 0.12s, border-color 0.12s, transform 0.05s;
+    user-select: none;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn.small { width: 44px; padding: 8px 0; font-size: 1.3rem; line-height: 1; }
+  .btn.play {
+    background: var(--accent-2); border-color: var(--accent-2); color: #fff;
+    min-width: 170px; font-size: 1.15rem; padding: 14px 22px;
+  }
+  .btn.play[aria-pressed='true'] { background: #c0392b; border-color: #c0392b; }
+
+  .slider-row { display: flex; align-items: center; gap: 10px; }
+  .slider-row input[type='range'] { flex: 1; }
+  input[type='range'] { accent-color: var(--accent); height: 28px; cursor: pointer; }
+
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .waves .btn { flex: 1; min-width: 120px; flex-direction: column; gap: 4px; padding: 10px 8px; font-size: 0.85rem; }
+  .waves .btn[aria-pressed='true'] { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--panel-2)); }
+
+  .volume-row { display: flex; align-items: center; gap: 12px; }
+  .volume-row label { color: var(--muted); min-width: 64px; }
+  .volume-row input { flex: 1; }
+  .volume-row output { min-width: 44px; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+
+  .hint { margin: 0; font-size: 0.82rem; color: var(--muted); }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
+</style>
+
+<script>
+  type Wave = 'sine' | 'square' | 'sawtooth' | 'triangle';
+
+  const MIN_F = 1;
+  const MAX_F = 22000;
+  const SLIDER_MAX = 1000;
+  const WAVES: Wave[] = ['sine', 'square', 'sawtooth', 'triangle'];
+
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+  const playBtn = $<HTMLButtonElement>('play');
+  const freqInput = $<HTMLInputElement>('freq-input');
+  const slider = $<HTMLInputElement>('freq-slider');
+  const decBtn = $<HTMLButtonElement>('dec');
+  const incBtn = $<HTMLButtonElement>('inc');
+  const halfBtn = $<HTMLButtonElement>('half');
+  const doubleBtn = $<HTMLButtonElement>('double');
+  const copyBtn = $<HTMLButtonElement>('copy');
+  const volume = $<HTMLInputElement>('volume');
+  const volumeOut = $<HTMLOutputElement>('volume-out');
+  const status = $<HTMLElement>('status');
+  const waveBtns = Array.from(document.querySelectorAll<HTMLButtonElement>('.wave'));
+
+  let freq = 440;
+  let wave: Wave = 'sine';
+  let playing = false;
+
+  let ctx: AudioContext | null = null;
+  let osc: OscillatorNode | null = null;
+  let gain: GainNode | null = null;
+
+  // ---------- utilidades ----------
+  const clamp = (f: number) => Math.min(MAX_F, Math.max(MIN_F, f));
+  const round3 = (f: number) => Math.round(f * 1000) / 1000;
+  const sliderToFreq = (p: number) => MIN_F * Math.pow(MAX_F / MIN_F, p / SLIDER_MAX);
+  const freqToSlider = (f: number) => (SLIDER_MAX * Math.log(f / MIN_F)) / Math.log(MAX_F / MIN_F);
+  const volumeToGain = (v: number) => Math.pow(v / 100, 2);
+  const formatFreq = (f: number) => String(round3(f));
+
+  // ---------- audio ----------
+  function startAudio() {
+    ctx ??= new AudioContext();
+    void ctx.resume();
+    osc = ctx.createOscillator();
+    gain = ctx.createGain();
+    osc.type = wave;
+    osc.frequency.value = freq;
+    gain.gain.value = 0;
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    // rampa corta para evitar "clics"
+    gain.gain.setTargetAtTime(volumeToGain(Number(volume.value)), ctx.currentTime, 0.015);
+  }
+
+  function stopAudio() {
+    if (!ctx || !osc || !gain) return;
+    const o = osc;
+    const g = gain;
+    g.gain.setTargetAtTime(0, ctx.currentTime, 0.015);
+    window.setTimeout(() => {
+      try { o.stop(); o.disconnect(); g.disconnect(); } catch { /* ya detenido */ }
+    }, 150);
+    osc = null;
+    gain = null;
+  }
+
+  function setPlaying(p: boolean) {
+    playing = p;
+    if (p) startAudio(); else stopAudio();
+    playBtn.setAttribute('aria-pressed', String(p));
+    playBtn.querySelector('.icon')!.textContent = p ? '■' : '▶';
+    playBtn.querySelector('.label')!.textContent = p ? 'Detener' : 'Reproducir';
+    status.textContent = p ? `Reproduciendo ${formatFreq(freq)} hercios` : 'Detenido';
+  }
+
+  // ---------- estado / UI ----------
+  function updateHash() {
+    const h = '#' + formatFreq(freq) + (wave !== 'sine' ? ',' + wave : '');
+    history.replaceState(null, '', h);
+  }
+
+  function setFrequency(f: number, source: 'slider' | 'input' | 'other' = 'other') {
+    if (!Number.isFinite(f)) return;
+    freq = round3(clamp(f));
+    if (source !== 'input') freqInput.value = formatFreq(freq);
+    if (source !== 'slider') slider.value = String(Math.round(freqToSlider(freq)));
+    if (osc && ctx) osc.frequency.setTargetAtTime(freq, ctx.currentTime, 0.01);
+    updateHash();
+  }
+
+  function setWave(w: Wave) {
+    wave = w;
+    waveBtns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.wave === w)));
+    if (osc) osc.type = w;
+    updateHash();
+  }
+
+  function setVolume(v: number) {
+    volume.value = String(v);
+    volumeOut.textContent = `${v}%`;
+    if (gain && ctx) gain.gain.setTargetAtTime(volumeToGain(v), ctx.currentTime, 0.015);
+    try { localStorage.setItem('tone-volume', String(v)); } catch { /* sin storage */ }
+  }
+
+  // ---------- eventos ----------
+  playBtn.addEventListener('click', () => setPlaying(!playing));
+
+  slider.addEventListener('input', () => setFrequency(sliderToFreq(Number(slider.value)), 'slider'));
+  // mientras se escribe en el campo
+  freqInput.addEventListener('input', () => {
+    const f = parseFloat(freqInput.value.replace(',', '.'));
+    if (Number.isFinite(f) && f > 0) setFrequency(f, 'input');
+  });
+  // al terminar, normaliza el texto
+  const normalizeInput = () => { freqInput.value = formatFreq(freq); };
+  freqInput.addEventListener('blur', normalizeInput);
+  freqInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { normalizeInput(); freqInput.blur(); }
+  });
+  freqInput.addEventListener('focus', () => freqInput.select());
+
+  decBtn.addEventListener('click', () => setFrequency(freq - 1));
+  incBtn.addEventListener('click', () => setFrequency(freq + 1));
+  halfBtn.addEventListener('click', () => setFrequency(freq / 2));
+  doubleBtn.addEventListener('click', () => setFrequency(freq * 2));
+
+  waveBtns.forEach((b) => b.addEventListener('click', () => setWave(b.dataset.wave as Wave)));
+  volume.addEventListener('input', () => setVolume(Number(volume.value)));
+
+  copyBtn.addEventListener('click', async () => {
+    const url = `${location.origin}${location.pathname}#${formatFreq(freq)}${wave !== 'sine' ? ',' + wave : ''}`;
+    const original = copyBtn.textContent;
+    try {
+      await navigator.clipboard.writeText(url);
+      copyBtn.textContent = '¡Copiado!';
+    } catch {
+      window.prompt('Copia este enlace:', url);
+    }
+    window.setTimeout(() => { copyBtn.textContent = original; }, 1500);
+  });
+
+  // Atajos de teclado
+  document.addEventListener('keydown', (e) => {
+    const t = e.target as HTMLElement;
+    const typing = t === freqInput;
+
+    if (e.code === 'Space' && !typing) {
+      e.preventDefault();
+      setPlaying(!playing);
+      return;
+    }
+
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !typing) {
+      e.preventDefault();
+      const dir = e.key === 'ArrowRight' ? 1 : -1;
+      if (e.ctrlKey || e.metaKey) {
+        setFrequency(freq + dir * (e.shiftKey ? 0.001 : 0.01));
+      } else if (e.shiftKey) {
+        setFrequency(freq + dir * 1);
+      } else {
+        const pos = Math.round(freqToSlider(freq)) + dir;
+        setFrequency(sliderToFreq(Math.min(SLIDER_MAX, Math.max(0, pos))));
+      }
+    }
+  });
+
+  // Evita que Espacio sobre un botón con foco lo active dos veces
+  document.addEventListener('keyup', (e) => {
+    if (e.code === 'Space' && (e.target as HTMLElement) !== freqInput) e.preventDefault();
+  });
+
+  // Enlaces internos (p. ej. "40 Hz") desde el texto de la página
+  window.addEventListener('tone:set-frequency', (e) => {
+    const f = (e as CustomEvent<{ frequency: number }>).detail.frequency;
+    setFrequency(f);
+    if (!playing) setPlaying(true);
+  });
+
+  // Cambios manuales del hash (#440 o #440,square)
+  function applyHash() {
+    const raw = decodeURIComponent(location.hash.replace(/^#/, ''));
+    if (!raw) return;
+    const [fPart, wPart] = raw.split(',');
+    const f = parseFloat(fPart.replace(',', '.'));
+    if (Number.isFinite(f) && f > 0) setFrequency(f);
+    if (wPart && (WAVES as string[]).includes(wPart)) setWave(wPart as Wave);
+  }
+  window.addEventListener('hashchange', applyHash);
+
+  // ---------- init ----------
+  try {
+    const v = Number(localStorage.getItem('tone-volume'));
+    if (Number.isFinite(v) && localStorage.getItem('tone-volume') !== null) setVolume(Math.min(100, Math.max(0, v)));
+  } catch { /* sin storage */ }
+  setFrequency(440);
+  applyHash();
+</script>

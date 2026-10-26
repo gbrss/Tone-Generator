@@ -1,0 +1,95 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ToneGenerator from '../components/ToneGenerator.astro';
+---
+
+<Layout title="Generador de tonos en línea - genera tonos puros de cualquier frecuencia">
+  <main class="wrap">
+    <h1>Generador de tonos en línea</h1>
+
+    <ToneGenerator />
+
+    <aside class="warning" role="note">
+      <strong>Puedes dañar tu audición o tus parlantes si reproduces tonos a volúmenes extremos.</strong>
+      Las personas no oímos bien los sonidos &lt; 20 Hz ni &gt; 10.000 Hz. Si subes el volumen para compensar,
+      podrías exponerte a niveles de sonido dañinos y exponer tus parlantes a corrientes perjudiciales.
+      Para estar seguro, anota el nivel de volumen con el que puedes escuchar un tono de 1.000 Hz sin molestia y
+      no te alejes mucho por encima de ese nivel, aunque no escuches casi nada, sobre todo en el rango agudo,
+      donde la audición es más frágil.
+    </aside>
+
+    <section>
+      <h2>Instrucciones</h2>
+      <p>Para reproducir un tono constante, haz clic en <strong>Reproducir</strong> o presiona <kbd>Espacio</kbd>.</p>
+      <p>
+        Para cambiar la frecuencia, arrastra el deslizador o presiona <kbd>←</kbd> <kbd>→</kbd> (flechas).
+        Para ajustar la frecuencia en 1 Hz, usa los botones o presiona <kbd>Shift</kbd> + <kbd>←</kbd> y
+        <kbd>Shift</kbd> + <kbd>→</kbd>. Para ajustarla en 0,01 Hz, presiona <kbd>Ctrl</kbd> + <kbd>←</kbd> y
+        <kbd>Ctrl</kbd> + <kbd>→</kbd>; para ajustarla en 0,001 Hz, presiona <kbd>Ctrl</kbd> + <kbd>Shift</kbd> +
+        <kbd>←</kbd> y <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>→</kbd>. Para reducir a la mitad o duplicar la
+        frecuencia (bajar o subir una octava), haz clic en <strong>×½</strong> y <strong>×2</strong>.
+      </p>
+      <p>
+        Para cambiar el tipo de onda de sinusoidal (tono puro) a cuadrada, triangular o diente de sierra, haz clic en
+        el botón correspondiente.
+      </p>
+      <p>Puedes mezclar tonos abriendo el generador en varias pestañas del navegador.</p>
+    </section>
+
+    <section>
+      <h2>¿Para qué puedo usar este generador de tonos?</h2>
+      <p>
+        Para afinar instrumentos, experimentos científicos (<em>¿cuál es la frecuencia de resonancia de esta copa de
+        vino?</em>), probar equipos de audio (<em>¿qué tan grave llega mi subwoofer?</em>) y probar tu audición
+        (<em>¿cuál es la frecuencia más alta que puedes oír? ¿hay frecuencias que solo oyes con un oído?</em>).
+      </p>
+      <p>
+        <strong>Identificación de la frecuencia del tinnitus.</strong> Si tienes tinnitus de tono puro, este generador
+        de frecuencias puede ayudarte a determinar la frecuencia. Cuando encuentres una que parezca coincidir con tu
+        tinnitus, revisa también la frecuencia una octava más alta (frecuencia × 2) y una octava más baja
+        (frecuencia × ½), porque es fácil confundir tonos separados por una octava.
+      </p>
+      <p id="40">
+        <strong>Alzheimer.</strong> Algunos científicos del MIT investigan seriamente la posibilidad de que los
+        <a href="#40" data-freq="40">tonos de 40 Hz</a> puedan revertir algunos cambios moleculares en los cerebros de
+        pacientes con Alzheimer. Los primeros estudios en ratones transgénicos mostraron resultados prometedores, pero
+        (como suele pasar) los ensayos tempranos en humanos muestran un panorama bastante menos claro. Hay más estudios
+        en curso. <em>Ojo: este generador no es un dispositivo médico, ¡no garantiza nada!</em>
+      </p>
+    </section>
+  </main>
+</Layout>
+
+<style>
+  .wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 24px 16px 64px;
+  }
+  h1 { font-size: 1.8rem; margin: 0 0 20px; }
+  h2 { font-size: 1.25rem; margin: 32px 0 8px; }
+  p { margin: 0 0 12px; }
+  .warning {
+    margin: 20px 0 8px;
+    padding: 14px 16px;
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
+    color: var(--warn-text);
+    border-radius: var(--radius);
+    font-size: 0.92rem;
+  }
+</style>
+
+<script>
+  // Los enlaces con data-freq (p. ej. "40 Hz") cambian la frecuencia del generador.
+  document.querySelectorAll<HTMLAnchorElement>('a[data-freq]').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      const f = parseFloat(a.dataset.freq || '');
+      if (!Number.isNaN(f)) {
+        window.dispatchEvent(new CustomEvent('tone:set-frequency', { detail: { frequency: f } }));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    });
+  });
+</script>
