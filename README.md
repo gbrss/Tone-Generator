@@ -1,0 +1,227 @@
+# 🎵 Generador de tonos en línea
+
+Generador de frecuencias en el navegador, hecho con [Astro](https://astro.build) y la **Web Audio API**. Produce tonos puros (y otras formas de onda) de **1 Hz a 22.000 Hz**, con control fino de la frecuencia por teclado, enlaces compartibles y sin dependencias de runtime: todo el audio se genera en el cliente.
+
+Está inspirado en las funciones del [Online Tone Generator de Szynalski](https://www.szynalski.com/tone-generator/), reescrito desde cero y en español.
+
+---
+
+## Índice
+
+- [Características](#características)
+- [Stack](#stack)
+- [Requisitos](#requisitos)
+- [Instalación y uso](#instalación-y-uso)
+- [Scripts disponibles](#scripts-disponibles)
+- [Estructura del proyecto](#estructura-del-proyecto)
+- [Guía de uso](#guía-de-uso)
+  - [Atajos de teclado](#atajos-de-teclado)
+  - [Enlaces compartibles](#enlaces-compartibles)
+- [Cómo funciona](#cómo-funciona)
+- [Despliegue](#despliegue)
+- [Compatibilidad de navegadores](#compatibilidad-de-navegadores)
+- [Advertencia de seguridad auditiva](#advertencia-de-seguridad-auditiva)
+- [Personalización](#personalización)
+- [Créditos y licencia](#créditos-y-licencia)
+
+---
+
+## Características
+
+- ▶️ **Reproducir / Detener** con botón o con la barra espaciadora.
+- 🎚️ **Frecuencia de 1 a 22.000 Hz**:
+  - Deslizador en **escala logarítmica** (más resolución en graves, que es donde el oído distingue mejor).
+  - Campo de texto para escribir el valor exacto (hasta **3 decimales**, acepta coma o punto).
+- ⌨️ **Ajuste fino por teclado**: pasos de 1 Hz, 0,01 Hz y 0,001 Hz.
+- ➕➖ **Botones de ±1 Hz**.
+- 🎼 **×½ y ×2** para bajar o subir una octava al instante.
+- 🌊 **Cuatro formas de onda**: sinusoidal (tono puro), cuadrada, diente de sierra y triangular.
+- 🔗 **Copiar enlace**: genera una URL que restaura la frecuencia y la onda al abrirla.
+- 🔊 **Control de volumen** con respuesta cuadrática (más natural al oído) y memoria entre sesiones.
+- 🪟 **Mezcla de tonos**: abre la página en varias pestañas y cada una aporta su propio tono.
+- ♿ **Accesible**: etiquetas ARIA, anuncio de estado para lectores de pantalla y foco visible.
+- 🌗 **Tema claro/oscuro** automático según la preferencia del sistema.
+- 📚 Textos informativos en español: instrucciones, usos (afinación, pruebas de audio, tinnitus, tonos de 40 Hz) y advertencia de volumen.
+
+## Stack
+
+| Tecnología | Uso |
+| --- | --- |
+| [Astro 5](https://astro.build) | Framework, salida 100 % estática |
+| TypeScript | Lógica del cliente (`<script>` de Astro) |
+| Web Audio API | Generación de audio (`OscillatorNode` + `GainNode`) |
+| CSS nativo | Estilos con variables y `color-mix`, sin librerías de UI |
+
+No usa React, Vue ni ninguna otra librería de componentes: la interactividad es JavaScript/TypeScript plano.
+
+## Requisitos
+
+- **Node.js** 18.20+ o 20.3+ (versión mínima que pide Astro 5). Se recomienda una LTS reciente.
+- **npm** (o pnpm / yarn, si prefieres).
+
+## Instalación y uso
+
+```bash
+# 1. Clonar el repositorio
+git clone <url-de-tu-repositorio>
+cd tone-generator
+
+# 2. Instalar dependencias
+npm install
+
+# 3. Levantar el servidor de desarrollo
+npm run dev
+```
+
+Por defecto queda disponible en <http://localhost:4321>.
+
+Para generar la versión de producción:
+
+```bash
+npm run build     # genera la carpeta dist/
+npm run preview   # sirve dist/ localmente para probarla
+```
+
+## Scripts disponibles
+
+| Comando | Descripción |
+| --- | --- |
+| `npm run dev` | Servidor de desarrollo con recarga en caliente |
+| `npm run build` | Compila el sitio estático en `dist/` |
+| `npm run preview` | Sirve localmente el build de producción |
+| `npm run astro -- <cmd>` | Acceso a la CLI de Astro (por ejemplo `astro check`) |
+
+## Estructura del proyecto
+
+```text
+tone-generator/
+├── astro.config.mjs              # Configuración de Astro
+├── package.json
+├── tsconfig.json                 # Extiende astro/tsconfigs/strict
+├── .gitignore
+├── README.md
+└── src/
+    ├── layouts/
+    │   └── Layout.astro          # HTML base, <head>, variables de tema y estilos globales
+    ├── components/
+    │   └── ToneGenerator.astro   # Interfaz del generador + toda la lógica de audio
+    └── pages/
+        └── index.astro           # Página principal: textos, advertencia e instrucciones
+```
+
+- **`Layout.astro`** define la estructura HTML, el idioma (`es`), la meta descripción y las variables CSS del tema claro/oscuro.
+- **`ToneGenerator.astro`** contiene el marcado de los controles, sus estilos y el `<script>` con la lógica (audio, teclado, URL, volumen).
+- **`index.astro`** compone la página y conecta los enlaces del texto (por ejemplo "tonos de 40 Hz") con el generador mediante un evento personalizado.
+
+## Guía de uso
+
+1. Pulsa **Reproducir** (o `Espacio`). El navegador solo permite iniciar audio tras una interacción del usuario, por eso el tono no arranca solo al cargar la página.
+2. Ajusta la **frecuencia** con el deslizador, escribiéndola en el campo o con los atajos de teclado.
+3. Elige la **forma de onda** con los botones.
+4. Regula el **volumen**. Empieza bajo y sube de a poco.
+5. Si quieres compartir el ajuste actual, usa **Copiar enlace**.
+
+### Atajos de teclado
+
+| Tecla | Acción |
+| --- | --- |
+| `Espacio` | Reproducir / detener |
+| `←` / `→` | Mover la frecuencia un paso del deslizador (≈ 1 % en escala logarítmica) |
+| `Shift` + `←` / `→` | −1 Hz / +1 Hz |
+| `Ctrl` + `←` / `→` | −0,01 Hz / +0,01 Hz |
+| `Ctrl` + `Shift` + `←` / `→` | −0,001 Hz / +0,001 Hz |
+| `Enter` (en el campo de texto) | Confirmar el valor escrito |
+
+> En macOS, `Cmd` funciona igual que `Ctrl` para los pasos finos.
+> Los atajos de flechas y espacio se desactivan mientras escribes en el campo de frecuencia, para no interferir con la edición.
+
+### Enlaces compartibles
+
+El estado se refleja en el *hash* de la URL y se actualiza en vivo:
+
+```text
+https://tu-sitio.com/#440            → 440 Hz, onda sinusoidal
+https://tu-sitio.com/#1000,square    → 1000 Hz, onda cuadrada
+https://tu-sitio.com/#40             → 40 Hz
+```
+
+Formas de onda válidas: `sine`, `square`, `sawtooth`, `triangle`. Si omites la onda, se usa `sine`.
+
+## Cómo funciona
+
+El audio se construye con un grafo mínimo de la Web Audio API:
+
+```text
+OscillatorNode ──▶ GainNode ──▶ AudioContext.destination
+```
+
+Detalles de implementación:
+
+- **Sin "clics"**: al iniciar, detener o cambiar la frecuencia/volumen se usa `setTargetAtTime` con constantes de tiempo muy cortas (10–15 ms), en vez de saltos bruscos. Al detener, el oscilador se apaga y se desconecta ~150 ms después de bajar la ganancia a cero.
+- **Escala logarítmica**: el deslizador va de 0 a 1000 y se mapea con `f = 1 · (22000 / 1)^(p / 1000)`. La conversión inversa mantiene sincronizados el deslizador y el campo de texto.
+- **Precisión**: la frecuencia se redondea a 3 decimales y se limita al rango 1–22.000 Hz.
+- **Volumen**: la ganancia es `(volumen / 100)²`, de modo que el control se siente más lineal para el oído. El valor se guarda en `localStorage` (con `try/catch`, por si el almacenamiento está bloqueado).
+- **Un solo `AudioContext`**: se crea la primera vez que se pulsa Reproducir y se reutiliza después.
+- **Comunicación entre componentes**: los enlaces del texto de `index.astro` disparan un `CustomEvent` (`tone:set-frequency`) que escucha el generador.
+
+## Despliegue
+
+El build es **100 % estático** (`dist/`), así que se puede publicar en cualquier hosting estático.
+
+### Cloudflare Pages
+
+- **Build command:** `npm run build`
+- **Build output directory:** `dist`
+
+### Netlify / Vercel
+
+- **Build command:** `npm run build`
+- **Publish / output directory:** `dist`
+
+### GitHub Pages
+
+Si lo publicas en `https://<usuario>.github.io/<repositorio>/`, configura `site` y `base` en `astro.config.mjs`:
+
+```js
+import { defineConfig } from 'astro/config';
+
+export default defineConfig({
+  site: 'https://<usuario>.github.io',
+  base: '/<repositorio>',
+});
+```
+
+Luego despliega el contenido de `dist/` (por ejemplo con una GitHub Action de Pages).
+
+> **Importante:** la Web Audio API funciona en cualquier origen, pero `navigator.clipboard` (botón "Copiar enlace") requiere **HTTPS** o `localhost`. Si falla, el botón muestra un cuadro para copiar el enlace manualmente.
+
+## Compatibilidad de navegadores
+
+Funciona en las versiones actuales de Chrome, Edge, Firefox y Safari (escritorio y móvil). Requiere soporte de `AudioContext`, `color-mix()` en CSS y módulos ES modernos.
+
+Notas:
+
+- En iOS/Safari el audio solo arranca tras un toque del usuario (el botón Reproducir cumple esto).
+- Muchos parlantes de teléfonos y notebooks no reproducen bien por debajo de ~100 Hz ni por encima de ~15 kHz; que no se oiga no significa que el tono no se esté generando.
+- Las ondas cuadrada y diente de sierra tienen mucha energía armónica y se perciben **más fuertes** que la sinusoidal al mismo volumen.
+
+## Advertencia de seguridad auditiva
+
+> **Puedes dañar tu audición o tus parlantes si reproduces tonos a volúmenes extremos.**
+
+Las personas no oímos bien por debajo de 20 Hz ni por encima de 10.000 Hz. Subir el volumen para compensar puede exponerte a niveles dañinos. Una buena práctica: anota el volumen con el que escuchas cómodamente un tono de 1.000 Hz y no te alejes mucho por encima de ese nivel, sobre todo en agudos, donde la audición es más frágil.
+
+Esta herramienta **no es un dispositivo médico** y no garantiza ningún efecto terapéutico.
+
+## Personalización
+
+- **Rango de frecuencias:** cambia `MIN_F` y `MAX_F` al inicio del `<script>` en `src/components/ToneGenerator.astro`.
+- **Volumen inicial:** modifica el atributo `value` del `<input id="volume">`.
+- **Colores y tema:** edita las variables CSS (`--bg`, `--accent`, etc.) en `src/layouts/Layout.astro`.
+- **Textos:** todo el contenido informativo está en `src/pages/index.astro`.
+- **Idioma:** el sitio está en español (`<html lang="es">`); para traducirlo, ajusta ese atributo y los textos de `index.astro` y `ToneGenerator.astro`.
+
+## Créditos y licencia
+
+- Inspirado en el [Online Tone Generator](https://www.szynalski.com/tone-generator/) de Tomasz P. Szynalski. Este proyecto es una reimplementación independiente; no incluye código ni recursos del sitio original.
+- Define aquí la licencia que prefieras para tu repositorio (por ejemplo MIT) y agrega el archivo `LICENSE` correspondiente.
