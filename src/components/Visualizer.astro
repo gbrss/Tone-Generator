@@ -1,0 +1,42 @@
+---
+// Marcado y estilos del gráfico (osciloscopio / espectro).
+// La lógica de dibujo vive en src/lib/visualizer.ts.
+---
+
+<div class="viz" data-viz>
+  <div class="viz-head">
+    <div class="viz-tabs" role="group" aria-label="Tipo de gráfico">
+      <button class="tab" type="button" data-view="scope" aria-pressed="true">Onda</button>
+      <button class="tab" type="button" data-view="spectrum" aria-pressed="false">Espectro</button>
+    </div>
+    <span class="viz-info" data-viz-info>Sin sonido</span>
+  </div>
+  <canvas class="canvas" role="img" aria-label="Gráfico en tiempo real de la señal"></canvas>
+</div>
+
+<style>
+  .viz {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    display: grid;
+    gap: 10px;
+  }
+  .viz-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .viz-tabs { display: flex; gap: 6px; }
+  .tab {
+    appearance: none; cursor: pointer; font: inherit; font-weight: 500; font-size: 0.9rem;
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px; padding: 6px 14px;
+    transition: border-color 0.12s;
+  }
+  .tab:hover { border-color: var(--accent); }
+  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .tab[aria-pressed='true'] {
+    border-color: var(--accent); color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 16%, var(--panel-2));
+  }
+  .viz-info { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .canvas { width: 100%; height: 220px; display: block; border-radius: 8px; background: var(--panel); }
+</style>

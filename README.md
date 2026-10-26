@@ -41,6 +41,10 @@ Está inspirado en las funciones del [Online Tone Generator de Szynalski](https:
 - 🪟 **Mezcla de tonos**: abre la página en varias pestañas y cada una aporta su propio tono.
 - ♿ **Accesible**: etiquetas ARIA, anuncio de estado para lectores de pantalla y foco visible.
 - 🌗 **Tema claro/oscuro** automático según la preferencia del sistema.
+- 🎛️ **Generador de múltiples tonos** (`/multiple/`): agrega hasta **16 tonos** que suenan a la vez. Cada uno tiene su propia frecuencia, onda, volumen, **balance izquierda/derecha** y encendido/apagado; más volumen general y «Reproducir/Detener todos».
+- 📈 **Gráfico en tiempo real** en ambos generadores (tono simple y múltiples tonos), con dos vistas:
+  - **Onda:** osciloscopio de la señal combinada, con disparo por cruce por cero para que la imagen no tiemble (se ven los batidos y la suma de ondas).
+  - **Espectro:** analizador de frecuencias en escala logarítmica (20 Hz – 22 kHz) con una marca punteada sobre cada tono encendido.
 - 📚 Textos informativos en español: instrucciones, usos (afinación, pruebas de audio, tinnitus, tonos de 40 Hz) y advertencia de volumen.
 
 ## Stack
@@ -102,16 +106,23 @@ tone-generator/
 ├── README.md
 └── src/
     ├── layouts/
-    │   └── Layout.astro          # HTML base, <head>, variables de tema y estilos globales
+    │   └── Layout.astro              # HTML base, navegación, variables de tema y estilos globales
     ├── components/
-    │   └── ToneGenerator.astro   # Interfaz del generador + toda la lógica de audio
+    │   ├── ToneGenerator.astro       # Generador de un tono: interfaz + lógica de audio
+    │   ├── MultiToneGenerator.astro  # Generador múltiple: lista de tonos y mezcla de audio
+    │   └── Visualizer.astro          # Marcado y estilos del gráfico (compartido)
+    ├── lib/
+    │   └── visualizer.ts             # Dibujo del osciloscopio y el espectro (canvas, compartido)
     └── pages/
-        └── index.astro           # Página principal: textos, advertencia e instrucciones
+        ├── index.astro               # Tono simple: textos, advertencia e instrucciones
+        └── multiple.astro            # Múltiples tonos (ruta /multiple/)
 ```
 
-- **`Layout.astro`** define la estructura HTML, el idioma (`es`), la meta descripción y las variables CSS del tema claro/oscuro.
+- **`Layout.astro`** define la estructura HTML, el idioma (`es`), la meta descripción, la barra de navegación entre páginas y las variables CSS del tema claro/oscuro.
 - **`ToneGenerator.astro`** contiene el marcado de los controles, sus estilos y el `<script>` con la lógica (audio, teclado, URL, volumen).
-- **`index.astro`** compone la página y conecta los enlaces del texto (por ejemplo "tonos de 40 Hz") con el generador mediante un evento personalizado.
+- **`MultiToneGenerator.astro`** maneja una lista dinámica de tonos (plantilla `<template>`) y la mezcla de audio.
+- **`Visualizer.astro`** + **`lib/visualizer.ts`** forman el gráfico compartido por ambos generadores: el componente pone el marcado y los estilos, y `initVisualizer()` dibuja sobre el `<canvas>` a partir de un `AnalyserNode`. Cada generador solo le entrega su analizador y la lista de frecuencias sonando.
+- **`index.astro`** y **`multiple.astro`** componen cada página. En `index.astro`, los enlaces del texto (por ejemplo "tonos de 40 Hz") se conectan al generador mediante un evento personalizado.
 
 ## Guía de uso
 
@@ -147,6 +158,14 @@ https://tu-sitio.com/#40             → 40 Hz
 
 Formas de onda válidas: `sine`, `square`, `sawtooth`, `triangle`. Si omites la onda, se usa `sine`.
 
+En el generador múltiple (`/multiple/`) el hash guarda todos los tonos con el formato `#m=<volumen general>&t=<frec>_<onda>_<volumen>_<balance>~...`:
+
+```text
+https://tu-sitio.com/multiple/#m=40&t=440_sine_30_0~443_sine_30_0~1000_square_15_-50
+```
+
+El balance va de `-100` (izquierda) a `100` (derecha). Por seguridad y porque los navegadores exigen un clic para iniciar el audio, **los tonos siempre cargan apagados**.
+
 ## Cómo funciona
 
 El audio se construye con un grafo mínimo de la Web Audio API:
@@ -162,6 +181,8 @@ Detalles de implementación:
 - **Precisión**: la frecuencia se redondea a 3 decimales y se limita al rango 1–22.000 Hz.
 - **Volumen**: la ganancia es `(volumen / 100)²`, de modo que el control se siente más lineal para el oído. El valor se guarda en `localStorage` (con `try/catch`, por si el almacenamiento está bloqueado).
 - **Un solo `AudioContext`**: se crea la primera vez que se pulsa Reproducir y se reutiliza después.
+- **Generador múltiple**: cada tono es su propia cadena `OscillatorNode → GainNode → StereoPannerNode`, y todas confluyen en un `GainNode` general → `DynamicsCompressorNode` (evita saturación al sumar tonos) → `AnalyserNode` → salida.
+- **Gráfico**: un `requestAnimationFrame` lee el `AnalyserNode` (FFT de 8192) y dibuja en un `<canvas>` con soporte de pantallas de alta densidad. En el tono simple el analizador va entre el oscilador y la salida; en el múltiple, al final de la mezcla. La animación sigue unos 0,8 s tras detener el sonido (para que el gráfico decaiga a cero) y luego se detiene sola; también se pausa con la pestaña oculta.
 - **Comunicación entre componentes**: los enlaces del texto de `index.astro` disparan un `CustomEvent` (`tone:set-frequency`) que escucha el generador.
 
 ## Despliegue

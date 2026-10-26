@@ -1,0 +1,574 @@
+---
+// Generador de múltiples tonos (Web Audio API).
+// Cada tono tiene: frecuencia, onda, volumen, balance (izq/der) y encendido/apagado.
+import Visualizer from './Visualizer.astro';
+---
+
+<section class="multi" aria-label="Generador de múltiples tonos">
+  <div class="toolbar">
+    <button id="toggle-all" class="btn play" type="button" aria-pressed="false">
+      <span class="icon" aria-hidden="true">▶</span>
+      <span class="label">Reproducir todos</span>
+    </button>
+    <button id="add" class="btn" type="button">＋ Agregar tono</button>
+    <button id="copy" class="btn" type="button" title="Copiar enlace con esta configuración">Copiar enlace</button>
+
+    <div class="master">
+      <label for="master">Volumen general</label>
+      <input id="master" type="range" min="0" max="100" step="1" value="27" />
+      <output id="master-out">27%</output>
+    </div>
+  </div>
+
+  <Visualizer />
+
+  <div id="tones" class="tones" role="list"></div>
+  <p id="empty" class="empty" hidden>No hay tonos. Usa «Agregar tono» para crear uno.</p>
+
+  <p class="hint">
+    Atajos: <kbd>Espacio</kbd> reproducir/detener todos · En el campo de frecuencia:
+    <kbd>↑</kbd><kbd>↓</kbd> ±1 Hz · <kbd>Shift</kbd> ±10 Hz · <kbd>Ctrl</kbd> ±0,1 Hz
+  </p>
+  <p id="status" class="sr-only" aria-live="polite"></p>
+</section>
+
+<template id="tone-tpl">
+  <div class="tone" role="listitem">
+    <span class="idx" aria-hidden="true"></span>
+
+    <button class="btn onoff" type="button" role="switch" aria-checked="false" title="Encender o apagar este tono">Apagado</button>
+
+    <div class="field freq">
+      <span class="lbl">Frecuencia</span>
+      <div class="freq-line">
+        <input class="f-input" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Frecuencia en hercios" />
+        <span class="unit">Hz</span>
+      </div>
+      <input class="f-slider" type="range" min="0" max="1000" step="1" aria-label="Frecuencia (escala logarítmica)" />
+    </div>
+
+    <div class="field wave-f">
+      <span class="lbl">Onda</span>
+      <select class="wave" aria-label="Tipo de onda">
+        <option value="sine">Sinusoidal</option>
+        <option value="square">Cuadrada</option>
+        <option value="sawtooth">Diente de sierra</option>
+        <option value="triangle">Triangular</option>
+      </select>
+    </div>
+
+    <div class="field vol-f">
+      <span class="lbl">Volumen</span>
+      <div class="slider-line">
+        <input class="vol" type="range" min="0" max="100" step="1" aria-label="Volumen del tono" />
+        <output class="vol-out"></output>
+      </div>
+    </div>
+
+    <div class="field pan-f">
+      <span class="lbl">Balance</span>
+      <div class="slider-line">
+        <input class="pan" type="range" min="-100" max="100" step="1" aria-label="Balance izquierda/derecha" />
+        <output class="pan-out"></output>
+      </div>
+    </div>
+
+    <button class="btn rm" type="button" aria-label="Quitar este tono" title="Quitar tono">✕</button>
+  </div>
+</template>
+
+<style>
+  .multi {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    display: grid;
+    gap: 16px;
+  }
+
+  .btn {
+    appearance: none; cursor: pointer;
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 16px; font: inherit; font-weight: 500;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    transition: background 0.12s, border-color 0.12s, transform 0.05s;
+    user-select: none;
+  }
+  .btn:hover:not(:disabled) { border-color: var(--accent); }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn.play {
+    background: var(--accent-2); border-color: var(--accent-2); color: #fff;
+    min-width: 190px; font-size: 1.05rem; padding: 12px 20px;
+  }
+  .btn.play[aria-pressed='true'] { background: #c0392b; border-color: #c0392b; }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .master { display: flex; align-items: center; gap: 10px; margin-left: auto; min-width: 240px; }
+  .master label { color: var(--muted); white-space: nowrap; }
+  .master input { flex: 1; }
+  .master output { min-width: 44px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  input[type='range'] { accent-color: var(--accent); height: 28px; cursor: pointer; width: 100%; }
+
+  .tones { display: grid; gap: 12px; }
+  .tone {
+    display: grid;
+    grid-template-columns: 30px 110px minmax(0, 1.7fr) 150px minmax(0, 1fr) minmax(0, 1fr) 44px;
+    grid-template-areas: 'idx onoff freq wave vol pan rm';
+    gap: 14px;
+    align-items: center;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .idx { grid-area: idx; font-weight: 600; color: var(--muted); text-align: center; font-variant-numeric: tabular-nums; }
+  .onoff { grid-area: onoff; padding: 8px 10px; }
+  .onoff[aria-checked='true'] {
+    border-color: var(--accent); color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 16%, var(--panel-2));
+  }
+  .field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; }
+  .field input, .field select { min-width: 0; max-width: 100%; }
+  .freq { grid-area: freq; }
+  .wave-f { grid-area: wave; }
+  .vol-f { grid-area: vol; }
+  .pan-f { grid-area: pan; }
+  .rm { grid-area: rm; width: 44px; padding: 8px 0; }
+
+  .lbl { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .freq-line { display: flex; align-items: baseline; gap: 6px; }
+  .f-input {
+    flex: 1; min-width: 0; width: 100%; font-size: 1.35rem; font-weight: 600; text-align: right;
+    background: var(--panel); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 2px 10px; font-variant-numeric: tabular-nums;
+  }
+  .f-input:focus-visible, .wave:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .unit { color: var(--muted); }
+  .wave {
+    font: inherit; background: var(--panel); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; padding: 7px 8px; width: 100%;
+  }
+  .slider-line { display: flex; align-items: center; gap: 8px; }
+  .slider-line output { min-width: 56px; text-align: right; font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .empty { margin: 0; text-align: center; color: var(--muted); padding: 16px 0; }
+  .hint { margin: 0; font-size: 0.82rem; color: var(--muted); }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
+
+  @media (max-width: 860px) {
+    .tone {
+      grid-template-columns: 30px 1fr 44px;
+      grid-template-areas:
+        'idx onoff rm'
+        'freq freq freq'
+        'wave wave wave'
+        'vol vol vol'
+        'pan pan pan';
+    }
+    .master { margin-left: 0; width: 100%; }
+  }
+</style>
+
+<script>
+  import { initVisualizer } from '../lib/visualizer';
+
+  type Wave = 'sine' | 'square' | 'sawtooth' | 'triangle';
+
+  interface ToneUI {
+    idx: HTMLElement;
+    onoff: HTMLButtonElement;
+    fInput: HTMLInputElement;
+    fSlider: HTMLInputElement;
+    wave: HTMLSelectElement;
+    vol: HTMLInputElement;
+    volOut: HTMLOutputElement;
+    pan: HTMLInputElement;
+    panOut: HTMLOutputElement;
+    rm: HTMLButtonElement;
+  }
+
+  interface Tone {
+    id: number;
+    freq: number;
+    wave: Wave;
+    vol: number; // 0..100
+    pan: number; // -100..100
+    on: boolean;
+    el: HTMLElement;
+    ui: ToneUI;
+    osc: OscillatorNode | null;
+    gain: GainNode | null;
+    panner: StereoPannerNode | null;
+  }
+
+  const WAVES: Wave[] = ['sine', 'square', 'sawtooth', 'triangle'];
+  const MIN_F = 1;
+  const MAX_F = 22000;
+  const SLIDER_MAX = 1000;
+  const MAX_TONES = 16;
+  const DEFAULT_VOL = 30;
+
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+  const q = <T extends Element>(root: ParentNode, sel: string): T => {
+    const el = root.querySelector<T>(sel);
+    if (!el) throw new Error(`No se encontró ${sel}`);
+    return el;
+  };
+
+  const tonesBox = $<HTMLDivElement>('tones');
+  const tpl = $<HTMLTemplateElement>('tone-tpl');
+  const toggleAllBtn = $<HTMLButtonElement>('toggle-all');
+  const addBtn = $<HTMLButtonElement>('add');
+  const copyBtn = $<HTMLButtonElement>('copy');
+  const masterInput = $<HTMLInputElement>('master');
+  const masterOut = $<HTMLOutputElement>('master-out');
+  const emptyMsg = $<HTMLParagraphElement>('empty');
+  const status = $<HTMLElement>('status');
+
+  const tones: Tone[] = [];
+  let nextId = 1;
+  let masterVal = 27;
+
+  // ---------- utilidades ----------
+  const clamp = (f: number) => Math.min(MAX_F, Math.max(MIN_F, f));
+  const round3 = (f: number) => Math.round(f * 1000) / 1000;
+  const fmt = (f: number) => String(round3(f));
+  const sliderToFreq = (p: number) => MIN_F * Math.pow(MAX_F / MIN_F, p / SLIDER_MAX);
+  const freqToSlider = (f: number) => (SLIDER_MAX * Math.log(f / MIN_F)) / Math.log(MAX_F / MIN_F);
+  const volToGain = (v: number) => Math.pow(v / 100, 2);
+  const panLabel = (p: number) => (p === 0 ? 'Centro' : p < 0 ? `Izq ${-p}%` : `Der ${p}%`);
+  const isWave = (w: string): w is Wave => (WAVES as string[]).includes(w);
+
+  // ---------- audio ----------
+  let ctx: AudioContext | null = null;
+  let master: GainNode | null = null;
+  let analyser: AnalyserNode | null = null;
+
+  function ensureCtx(): AudioContext {
+    if (!ctx) {
+      ctx = new AudioContext();
+      master = ctx.createGain();
+      master.gain.value = volToGain(masterVal);
+      // Compresor al final de la cadena: evita saturación cuando se suman muchos tonos.
+      const comp = ctx.createDynamicsCompressor();
+      analyser = ctx.createAnalyser();
+      analyser.fftSize = 8192;
+      analyser.smoothingTimeConstant = 0.8;
+      analyser.minDecibels = -100;
+      analyser.maxDecibels = -10;
+      master.connect(comp);
+      comp.connect(analyser);
+      analyser.connect(ctx.destination);
+    }
+    void ctx.resume();
+    return ctx;
+  }
+
+  function startTone(t: Tone) {
+    if (t.osc) return;
+    const c = ensureCtx();
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+    const panner = c.createStereoPanner();
+    osc.type = t.wave;
+    osc.frequency.value = t.freq;
+    gain.gain.value = 0;
+    panner.pan.value = t.pan / 100;
+    osc.connect(gain);
+    gain.connect(panner);
+    panner.connect(master!);
+    osc.start();
+    gain.gain.setTargetAtTime(volToGain(t.vol), c.currentTime, 0.015);
+    t.osc = osc;
+    t.gain = gain;
+    t.panner = panner;
+  }
+
+  function stopTone(t: Tone) {
+    if (!ctx || !t.osc || !t.gain || !t.panner) return;
+    const { osc, gain, panner } = t;
+    gain.gain.setTargetAtTime(0, ctx.currentTime, 0.015);
+    window.setTimeout(() => {
+      try { osc.stop(); } catch { /* ya detenido */ }
+      osc.disconnect();
+      gain.disconnect();
+      panner.disconnect();
+    }, 150);
+    t.osc = null;
+    t.gain = null;
+    t.panner = null;
+  }
+
+  // ---------- estado / UI ----------
+  function renderTone(t: Tone, skip?: 'fInput' | 'fSlider') {
+    const { ui } = t;
+    if (skip !== 'fInput') ui.fInput.value = fmt(t.freq);
+    if (skip !== 'fSlider') ui.fSlider.value = String(Math.round(freqToSlider(t.freq)));
+    ui.wave.value = t.wave;
+    ui.vol.value = String(t.vol);
+    ui.volOut.textContent = `${t.vol}%`;
+    ui.pan.value = String(t.pan);
+    ui.panOut.textContent = panLabel(t.pan);
+    ui.onoff.setAttribute('aria-checked', String(t.on));
+    ui.onoff.textContent = t.on ? 'Encendido' : 'Apagado';
+  }
+
+  function renumber() {
+    tones.forEach((t, i) => { t.ui.idx.textContent = String(i + 1); });
+  }
+
+  function refreshGlobal() {
+    const anyOn = tones.some((t) => t.on);
+    toggleAllBtn.setAttribute('aria-pressed', String(anyOn));
+    toggleAllBtn.querySelector('.icon')!.textContent = anyOn ? '■' : '▶';
+    toggleAllBtn.querySelector('.label')!.textContent = anyOn ? 'Detener todos' : 'Reproducir todos';
+    toggleAllBtn.disabled = tones.length === 0;
+    addBtn.disabled = tones.length >= MAX_TONES;
+    addBtn.title = tones.length >= MAX_TONES ? `Máximo ${MAX_TONES} tonos` : '';
+    emptyMsg.hidden = tones.length > 0;
+  }
+
+  function serialize(): string {
+    const list = tones.map((t) => [fmt(t.freq), t.wave, t.vol, t.pan].join('_')).join('~');
+    return `#m=${masterVal}&t=${list}`;
+  }
+
+  function updateHash() {
+    history.replaceState(null, '', serialize());
+  }
+
+  function setOn(t: Tone, on: boolean) {
+    t.on = on;
+    if (on) startTone(t); else stopTone(t);
+    renderTone(t);
+    refreshGlobal();
+    const active = tones.filter((x) => x.on).length;
+    status.textContent = `${active} de ${tones.length} tonos sonando`;
+    kickViz();
+  }
+
+  function setFreq(t: Tone, f: number, source?: 'fInput' | 'fSlider') {
+    if (!Number.isFinite(f)) return;
+    t.freq = round3(clamp(f));
+    renderTone(t, source);
+    if (t.osc && ctx) t.osc.frequency.setTargetAtTime(t.freq, ctx.currentTime, 0.01);
+    updateHash();
+    updateInfo();
+  }
+
+  function createTone(
+    init: Partial<Pick<Tone, 'freq' | 'wave' | 'vol' | 'pan'>> = {},
+    on = false,
+  ): Tone | null {
+    if (tones.length >= MAX_TONES) return null;
+    const frag = tpl.content.cloneNode(true) as DocumentFragment;
+    const el = q<HTMLElement>(frag, '.tone');
+    const ui: ToneUI = {
+      idx: q(el, '.idx'),
+      onoff: q(el, '.onoff'),
+      fInput: q(el, '.f-input'),
+      fSlider: q(el, '.f-slider'),
+      wave: q(el, '.wave'),
+      vol: q(el, '.vol'),
+      volOut: q(el, '.vol-out'),
+      pan: q(el, '.pan'),
+      panOut: q(el, '.pan-out'),
+      rm: q(el, '.rm'),
+    };
+    const t: Tone = {
+      id: nextId++,
+      freq: round3(clamp(init.freq ?? 432)),
+      wave: init.wave ?? 'sine',
+      vol: init.vol ?? DEFAULT_VOL,
+      pan: init.pan ?? 0,
+      on: false,
+      el,
+      ui,
+      osc: null,
+      gain: null,
+      panner: null,
+    };
+
+    ui.onoff.addEventListener('click', () => setOn(t, !t.on));
+
+    ui.fSlider.addEventListener('input', () => setFreq(t, sliderToFreq(Number(ui.fSlider.value)), 'fSlider'));
+    ui.fInput.addEventListener('input', () => {
+      const f = parseFloat(ui.fInput.value.replace(',', '.'));
+      if (Number.isFinite(f) && f > 0) setFreq(t, f, 'fInput');
+    });
+    ui.fInput.addEventListener('blur', () => { ui.fInput.value = fmt(t.freq); });
+    ui.fInput.addEventListener('focus', () => ui.fInput.select());
+    ui.fInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { ui.fInput.blur(); return; }
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const dir = e.key === 'ArrowUp' ? 1 : -1;
+        const step = e.ctrlKey || e.metaKey ? 0.1 : e.shiftKey ? 10 : 1;
+        setFreq(t, t.freq + dir * step);
+        ui.fInput.select();
+      }
+    });
+
+    ui.wave.addEventListener('change', () => {
+      if (!isWave(ui.wave.value)) return;
+      t.wave = ui.wave.value;
+      if (t.osc) t.osc.type = t.wave;
+      updateHash();
+    });
+
+    ui.vol.addEventListener('input', () => {
+      t.vol = Number(ui.vol.value);
+      ui.volOut.textContent = `${t.vol}%`;
+      if (t.gain && ctx) t.gain.gain.setTargetAtTime(volToGain(t.vol), ctx.currentTime, 0.015);
+      updateHash();
+    });
+
+    ui.pan.addEventListener('input', () => {
+      t.pan = Number(ui.pan.value);
+      ui.panOut.textContent = panLabel(t.pan);
+      if (t.panner && ctx) t.panner.pan.setTargetAtTime(t.pan / 100, ctx.currentTime, 0.015);
+      updateHash();
+    });
+    // doble clic sobre el balance lo centra
+    ui.pan.addEventListener('dblclick', () => {
+      ui.pan.value = '0';
+      ui.pan.dispatchEvent(new Event('input'));
+    });
+
+    ui.rm.addEventListener('click', () => {
+      stopTone(t);
+      const i = tones.indexOf(t);
+      if (i >= 0) tones.splice(i, 1);
+      t.el.remove();
+      renumber();
+      refreshGlobal();
+      updateHash();
+      status.textContent = `Tono quitado. Quedan ${tones.length}.`;
+      kickViz();
+    });
+
+    tones.push(t);
+    tonesBox.appendChild(el);
+    renderTone(t);
+    renumber();
+    refreshGlobal();
+    if (on) setOn(t, true);
+    return t;
+  }
+
+  // ---------- controles globales ----------
+  toggleAllBtn.addEventListener('click', () => {
+    const turnOn = !tones.some((t) => t.on);
+    tones.forEach((t) => setOn(t, turnOn));
+  });
+
+  addBtn.addEventListener('click', () => {
+    const last = tones[tones.length - 1];
+    // Nuevo tono: una quinta justa sobre el anterior (o 440 Hz si no cabe)
+    const candidate = last ? last.freq * 1.5 : 440;
+    const freq = candidate <= MAX_F ? candidate : 440;
+    const soundNow = tones.some((t) => t.on);
+    const t = createTone({ freq }, soundNow);
+    if (t) {
+      updateHash();
+      t.ui.fInput.focus();
+    }
+  });
+
+  function setMaster(v: number, persist = true) {
+    masterVal = v;
+    masterInput.value = String(v);
+    masterOut.textContent = `${v}%`;
+    if (master && ctx) master.gain.setTargetAtTime(volToGain(v), ctx.currentTime, 0.015);
+    if (persist) {
+      try { localStorage.setItem('multi-master', String(v)); } catch { /* sin storage */ }
+    }
+  }
+  masterInput.addEventListener('input', () => { setMaster(Number(masterInput.value)); updateHash(); });
+
+  copyBtn.addEventListener('click', async () => {
+    const url = `${location.origin}${location.pathname}${serialize()}`;
+    const original = copyBtn.textContent;
+    try {
+      await navigator.clipboard.writeText(url);
+      copyBtn.textContent = '¡Copiado!';
+    } catch {
+      window.prompt('Copia este enlace:', url);
+    }
+    window.setTimeout(() => { copyBtn.textContent = original; }, 1500);
+  });
+
+  // Espacio: reproducir/detener todos (solo si el foco no está en un control)
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && e.target === document.body && tones.length > 0) {
+      e.preventDefault();
+      toggleAllBtn.click();
+    }
+  });
+
+  // ---------- gráfico (módulo compartido) ----------
+  const viz = initVisualizer(document.querySelector<HTMLElement>('[data-viz]')!, {
+    getAnalyser: () => analyser,
+    getMarkers: () => tones.filter((t) => t.on).map((t) => t.freq),
+  });
+
+  function updateInfo() {
+    const active = tones.filter((t) => t.on);
+    viz.setInfo(active.length === 0
+      ? 'Sin sonido'
+      : `${active.length} ${active.length === 1 ? 'tono' : 'tonos'}: ${active.map((t) => `${fmt(t.freq)} Hz`).join(' + ')}`);
+  }
+
+  function kickViz() {
+    updateInfo();
+    viz.kick();
+  }
+
+  // ---------- carga inicial ----------
+  // Formato del hash: #m=40&t=440_sine_30_0~880_square_20_-50
+  // (frecuencia_onda_volumen_balance). Los tonos siempre cargan apagados:
+  // el navegador exige un gesto del usuario para iniciar el audio.
+  function loadFromHash(): boolean {
+    if (!location.hash) return false;
+    const params = new URLSearchParams(location.hash.slice(1));
+    const m = Number(params.get('m'));
+    if (params.has('m') && Number.isFinite(m)) setMaster(Math.min(100, Math.max(0, Math.round(m))), false);
+    const raw = params.get('t');
+    if (!raw) return false;
+    let created = 0;
+    for (const part of raw.split('~').slice(0, MAX_TONES)) {
+      const [f, w, v, p] = part.split('_');
+      const freq = parseFloat(f);
+      if (!Number.isFinite(freq) || freq <= 0) continue;
+      const vol = Number(v);
+      const pan = Number(p);
+      createTone({
+        freq,
+        wave: w && isWave(w) ? w : 'sine',
+        vol: Number.isFinite(vol) ? Math.min(100, Math.max(0, Math.round(vol))) : DEFAULT_VOL,
+        pan: Number.isFinite(pan) ? Math.min(100, Math.max(-100, Math.round(pan))) : 0,
+      });
+      created++;
+    }
+    return created > 0;
+  }
+
+  try {
+    const saved = localStorage.getItem('multi-master');
+    if (saved !== null && Number.isFinite(Number(saved))) setMaster(Math.min(100, Math.max(0, Number(saved))), false);
+  } catch { /* sin storage */ }
+
+  if (!loadFromHash()) createTone({ freq: 432 });
+  refreshGlobal();
+  updateHash();
+  kickViz();
+</script>

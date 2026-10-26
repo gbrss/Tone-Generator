@@ -4,6 +4,13 @@ interface Props {
   description?: string;
 }
 const { title, description = 'Genera tonos puros de cualquier frecuencia directamente en tu navegador.' } = Astro.props;
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const path = Astro.url.pathname.replace(/\/$/, '');
+const links = [
+  { href: `${base}/`, label: 'Tono simple', active: path === base || path === `${base}/index.html` },
+  { href: `${base}/multiple/`, label: 'Múltiples tonos', active: path.startsWith(`${base}/multiple`) },
+];
 ---
 
 <!doctype html>
@@ -16,6 +23,11 @@ const { title, description = 'Genera tonos puros de cualquier frecuencia directa
     <title>{title}</title>
   </head>
   <body>
+    <nav class="site-nav" aria-label="Principal">
+      {links.map((l) => (
+        <a href={l.href} aria-current={l.active ? 'page' : undefined}>{l.label}</a>
+      ))}
+    </nav>
     <slot />
   </body>
 </html>
@@ -60,6 +72,20 @@ const { title, description = 'Genera tonos puros de cualquier frecuencia directa
     line-height: 1.6;
   }
   a { color: var(--accent); }
+  .site-nav {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    max-width: 1040px; margin: 0 auto; padding: 16px 16px 0;
+  }
+  .site-nav a {
+    text-decoration: none; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 6px 16px; font-size: 0.95rem;
+  }
+  .site-nav a:hover { border-color: var(--accent); color: var(--text); }
+  .site-nav a[aria-current='page'] {
+    color: var(--accent); border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+  }
   kbd {
     background: var(--panel-2);
     border: 1px solid var(--border);

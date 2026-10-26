@@ -1,0 +1,76 @@
+---
+import Layout from '../layouts/Layout.astro';
+import MultiToneGenerator from '../components/MultiToneGenerator.astro';
+---
+
+<Layout
+  title="Generador de múltiples tonos en línea - combina varias frecuencias"
+  description="Combina varias frecuencias a la vez: elige onda, volumen y balance izquierda/derecha de cada tono, directamente en tu navegador."
+>
+  <main class="wrap">
+    <h1>Generador de múltiples tonos</h1>
+
+    <MultiToneGenerator />
+
+    <aside class="warning" role="note">
+      <strong>Mantén el volumen bajo.</strong>
+      Al sumar varios tonos el nivel total sube, y los sonidos muy graves o muy agudos pueden dañar tu audición o tus
+      parlantes aunque casi no los escuches. Empieza con el volumen general bajo y súbelo de a poco.
+    </aside>
+
+    <section>
+      <h2>Cómo se usa</h2>
+      <p>
+        Cada fila es un tono independiente. Todos los tonos que estén <strong>encendidos</strong> suenan al mismo
+        tiempo, y puedes agregar los que necesites con <strong>Agregar tono</strong> (hasta 16).
+      </p>
+      <ul>
+        <li><strong>Encendido/Apagado:</strong> activa o pausa ese tono. «Reproducir todos» enciende o apaga el conjunto completo.</li>
+        <li><strong>Frecuencia:</strong> escribe el valor (1 a 22.000 Hz, hasta 3 decimales) o usa el deslizador logarítmico. En el campo, <kbd>↑</kbd> <kbd>↓</kbd> cambian ±1 Hz; con <kbd>Shift</kbd> ±10 Hz y con <kbd>Ctrl</kbd> ±0,1 Hz.</li>
+        <li><strong>Onda:</strong> sinusoidal, cuadrada, diente de sierra o triangular.</li>
+        <li><strong>Volumen:</strong> nivel de cada tono por separado. El <strong>volumen general</strong> controla la mezcla completa.</li>
+        <li><strong>Balance:</strong> reparte el tono entre el oído izquierdo y el derecho (doble clic para centrarlo). Útil con audífonos.</li>
+        <li><strong>Gráfico:</strong> <em>Onda</em> muestra la señal combinada tipo osciloscopio (verás cómo se suman las ondas y cómo aparecen los batidos); <em>Espectro</em> muestra qué frecuencias suenan y con qué nivel, en escala logarítmica de 20 Hz a 22 kHz, con una línea punteada sobre cada tono encendido.</li>
+        <li><strong>Copiar enlace:</strong> guarda la configuración en la URL. Al abrirla, los tonos se cargan <em>apagados</em> (el navegador exige un clic para iniciar el audio).</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>¿Qué puedo hacer con varios tonos?</h2>
+      <p>
+        Armar <strong>acordes</strong> y comparar intervalos, escuchar <strong>batidos</strong> (dos frecuencias muy
+        cercanas, por ejemplo 440 Hz y 443 Hz, producen un pulso lento), probar un tono distinto en cada oído con el
+        balance, o mezclar un tono de prueba con otro para revisar la respuesta de parlantes y salas.
+      </p>
+      <p>
+        Un limitador (compresor) al final de la cadena de audio ayuda a evitar saturación cuando sumas muchos tonos,
+        pero no reemplaza el cuidado con el volumen.
+      </p>
+      <a class="github-button" href="https://github.com/gbrss/Tone-Generator" data-color-scheme="no-preference: light; light: light; dark: dark;" data-icon="octicon-star" data-size="large" aria-label="Star gbrss/Tone-Generator on GitHub">Star</a>
+    </section>
+  </main>
+</Layout>
+
+<style>
+  .wrap {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 24px 16px 64px;
+  }
+  h1 { font-size: 1.8rem; margin: 0 0 20px; }
+  h2 { font-size: 1.25rem; margin: 32px 0 8px; }
+  p { margin: 0 0 12px; }
+  ul { margin: 0 0 12px; padding-left: 1.2rem; }
+  li { margin-bottom: 6px; }
+  .warning {
+    margin: 20px 0 8px;
+    padding: 14px 16px;
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
+    color: var(--warn-text);
+    border-radius: var(--radius);
+    font-size: 0.92rem;
+  }
+</style>
+<script async defer src="https://buttons.github.io/buttons.js"></script>
+
